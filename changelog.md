@@ -7,6 +7,9 @@ and this project tries to adhere to [Semantic Versioning](https://semver.org/spe
 ## [Unreleased Changes]
 None currently
 
+### Fixed
+- Default config values being wrong
+
 ## [6.0.3](https://github.com/iPortalTeam/ImmersivePortalsModForNeo/tree/7c526fc7f1af2f339bf1611d9aa53db5f80ae91d) - 2024-10-20
 
 ### Added

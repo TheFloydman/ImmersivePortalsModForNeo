@@ -13,7 +13,7 @@ public class IPFeatureControl {
 //            .orElseThrow(() -> new RuntimeException("iportal mod not found"));
 //
 //        return modContainer.getContainingMod().isPresent();
-        return true;
+        return false;
     }
     
     public static boolean enableVanillaBehaviorChangingByDefault() {
