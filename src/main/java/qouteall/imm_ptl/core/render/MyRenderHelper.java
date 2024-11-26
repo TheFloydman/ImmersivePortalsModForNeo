@@ -16,6 +16,7 @@ import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceProvider;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.apache.commons.lang3.Validate;
 import org.joml.Matrix4f;
@@ -285,38 +286,64 @@ public class MyRenderHelper {
             viewportWidth, viewportHeight
         );
     }
-    
+
     public static void drawFramebuffer(
-        RenderTarget textureProvider, boolean doUseAlphaBlend, boolean doEnableModifyAlpha,
-        float xMin, float xMax, float yMin, float yMax
+            RenderTarget textureProvider, boolean doUseAlphaBlend, boolean doEnableModifyAlpha,
+            float xMin, float xMax, float yMin, float yMax
     ) {
-        drawFramebufferWithViewport(
-            textureProvider,
-            doUseAlphaBlend, doEnableModifyAlpha,
-            xMin, xMax, yMin, yMax,
-            client.getWindow().getWidth(),
-            client.getWindow().getHeight()
+        drawFramebufferWithCoordinatesAndDimensions(
+                textureProvider,
+                doUseAlphaBlend, doEnableModifyAlpha,
+                0, 0,
+                client.getWindow().getWidth(),
+                client.getWindow().getHeight()
         );
     }
-    
+
+    public static void drawFramebufferWithViewport(
+            RenderTarget textureProvider, boolean doUseAlphaBlend, boolean doEnableModifyAlpha,
+            float left, float right, float bottom, float up,
+            int viewportWidth, int viewportHeight
+    ) {
+        drawFramebufferWithCoordinatesAndDimensions(
+                textureProvider,
+                doUseAlphaBlend, doEnableModifyAlpha,
+                0, 0,
+                viewportWidth, viewportHeight
+        );
+    }
+
+    public static void drawFramebufferWithBounds(
+            RenderTarget textureProvider, boolean doUseAlphaBlend, boolean doEnableModifyAlpha,
+            int xMin, int xMax, int yMin, int yMax
+    ) {
+
+        drawFramebufferWithCoordinatesAndDimensions(
+                textureProvider,
+                doUseAlphaBlend, doEnableModifyAlpha,
+                xMin, yMin,
+                Mth.abs(xMax - xMin),
+                Mth.abs(yMax - yMin)
+        );
+    }
+
     /**
      * {@link RenderTarget#blitToScreen(int, int)}
      */
     @IPVanillaCopy
-    public static void drawFramebufferWithViewport(
-        RenderTarget textureProvider, boolean doUseAlphaBlend, boolean doEnableModifyAlpha,
-        float left, float right, float bottom, float up,
-        int viewportWidth, int viewportHeight
+    public static void drawFramebufferWithCoordinatesAndDimensions(
+            RenderTarget textureProvider, boolean doUseAlphaBlend, boolean doEnableModifyAlpha,
+            int x, int y, int viewportWidth, int viewportHeight
     ) {
         CHelper.checkGlError();
-        
-        GlStateManager._disableDepthTest();
-        GlStateManager._depthMask(false);
-        GlStateManager._viewport(0, 0, viewportWidth, viewportHeight);
-        
+
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.viewport(x, textureProvider.viewHeight - viewportHeight - y, viewportWidth, viewportHeight);
+
         if (doUseAlphaBlend) {
             RenderSystem.enableBlend();
-            
+
             // this is used for rendering a FB onto screen when the FB contains translucent things
             // the FB should initialize with zero color and zero alpha
             // MC's default blend func is: color = srcColor * srcAlpha + dstColor * (1-srcAlpha)
@@ -325,28 +352,28 @@ public class MyRenderHelper {
             // color = contentColor * contentAlpha + dstColor * (1-contentAlpha)
             // color = fbColor * 1 + dstColor * (1-contentAlpha)
             RenderSystem.blendFuncSeparate(
-                GlStateManager.SourceFactor.ONE,
-                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
-                GlStateManager.SourceFactor.ZERO,
-                GlStateManager.DestFactor.ONE
+                    GlStateManager.SourceFactor.ONE,
+                    GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                    GlStateManager.SourceFactor.ZERO,
+                    GlStateManager.DestFactor.ONE
             );
         }
         else {
             RenderSystem.disableBlend();
         }
-        
+
         if (doEnableModifyAlpha) {
-            GlStateManager._colorMask(true, true, true, true);
+            RenderSystem.colorMask(true, true, true, true);
         }
         else {
-            GlStateManager._colorMask(true, true, true, false);
+            RenderSystem.colorMask(true, true, true, false);
         }
-        
+
         ShaderInstance shader = doUseAlphaBlend ?
-            client.gameRenderer.blitShader : blitScreenNoBlendShader;
-        
+                client.gameRenderer.blitShader : blitScreenNoBlendShader;
+
         Validate.notNull(shader, "shader is null");
-        
+
         shader.setSampler("DiffuseSampler", textureProvider.getColorTextureId());
         shader.apply();
         BufferBuilder bufferBuilder = RenderSystem.renderThreadTesselator().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLIT_SCREEN);
@@ -356,13 +383,13 @@ public class MyRenderHelper {
         bufferBuilder.addVertex(0.0f, 1.0f, 0.0f);
         BufferUploader.draw(bufferBuilder.buildOrThrow());
         shader.clear();
-        
-        GlStateManager._depthMask(true);
-        GlStateManager._colorMask(true, true, true, true);
-        
+
+        RenderSystem.depthMask(true);
+        RenderSystem.colorMask(true, true, true, true);
+
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        
+
         CHelper.checkGlError();
     }
     
